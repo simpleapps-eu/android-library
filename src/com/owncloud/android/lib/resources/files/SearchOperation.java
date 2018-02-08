@@ -61,24 +61,35 @@ public class SearchOperation extends RemoteOperation {
         CONTENT_TYPE_SEARCH,
         RECENTLY_MODIFIED_SEARCH,
         RECENTLY_ADDED_SEARCH,
-        SHARED_SEARCH
+        SHARED_SEARCH,
+        PHOTO_SEARCH
     }
 
     private String searchQuery;
     private SearchType searchType;
     private boolean filterOutFiles;
+    private int limit;
+    private long timestamp;
 
     public SearchOperation(String query, SearchType searchType, boolean filterOutFiles) {
         this.searchQuery = query;
         this.searchType = searchType;
         this.filterOutFiles = filterOutFiles;
     }
+    
+    public void setLimit(int limit) {
+        this.limit = limit;
+    }
+    
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
+    }
 
     @Override
     protected RemoteOperationResult run(OwnCloudClient client) {
-        RemoteOperationResult result = null;
+        RemoteOperationResult result;
         SearchMethod searchMethod = null;
-        OptionsMethod optionsMethod = null;
+        OptionsMethod optionsMethod;
 
         String webDavUrl = client.getNewWebdavUri(false).toString();
         optionsMethod = new OptionsMethod(webDavUrl);
@@ -86,7 +97,7 @@ public class SearchOperation extends RemoteOperation {
         try {
             int optionsStatus = client.executeMethod(optionsMethod);
             boolean isSearchSupported = optionsMethod.isAllowed("SEARCH");
-            
+
             if (isSearchSupported) {
                 searchMethod = new SearchMethod(webDavUrl, new SearchInfo("NC", Namespace.XMLNS_NAMESPACE, "NC"));
 
@@ -94,7 +105,7 @@ public class SearchOperation extends RemoteOperation {
 
                 // check and process response
                 boolean isSuccess = (status == HttpStatus.SC_MULTI_STATUS || status == HttpStatus.SC_OK);
-                
+
                 if (isSuccess) {
                     // get data from remote folder
                     MultiStatus dataInServer = searchMethod.getResponseBodyAsMultiStatus();
@@ -172,29 +183,29 @@ public class SearchOperation extends RemoteOperation {
         Element selectElement = query.createElementNS(DAV_NAMESPACE, "d:select");
         Element selectPropsElement = query.createElementNS(DAV_NAMESPACE, "d:prop");
         // get all
-        Element displayNameElement = query.createElementNS(DAV_NAMESPACE, "d:displayname");
+//        Element displayNameElement = query.createElementNS(DAV_NAMESPACE, "d:displayname");
         Element contentTypeElement = query.createElementNS(DAV_NAMESPACE, "d:getcontenttype");
         Element resourceTypeElement = query.createElementNS(DAV_NAMESPACE, "d:resourcetype");
         Element contentLengthElement = query.createElementNS(DAV_NAMESPACE, "d:getcontentlength");
         Element lastModifiedElement = query.createElementNS(DAV_NAMESPACE, "d:getlastmodified");
-        Element creationDate = query.createElementNS(DAV_NAMESPACE, "d:creationdate");
+//        Element creationDate = query.createElementNS(DAV_NAMESPACE, "d:creationdate");
         Element etagElement = query.createElementNS(DAV_NAMESPACE, "d:getetag");
-        Element quotaUsedElement = query.createElementNS(DAV_NAMESPACE, "d:quota-used-bytes");
-        Element quotaAvailableElement = query.createElementNS(DAV_NAMESPACE, "d:quota-available-bytes");
+//        Element quotaUsedElement = query.createElementNS(DAV_NAMESPACE, "d:quota-used-bytes");
+//        Element quotaAvailableElement = query.createElementNS(DAV_NAMESPACE, "d:quota-available-bytes");
         Element permissionsElement = query.createElementNS(WebdavEntry.NAMESPACE_OC, "oc:permissions");
         Element remoteIdElement = query.createElementNS(WebdavEntry.NAMESPACE_OC, "oc:id");
         Element sizeElement = query.createElementNS(WebdavEntry.NAMESPACE_OC, "oc:size");
         Element favoriteElement = query.createElementNS(WebdavEntry.NAMESPACE_OC, "oc:favorite");
 
-        selectPropsElement.appendChild(displayNameElement);
+//        selectPropsElement.appendChild(displayNameElement);
         selectPropsElement.appendChild(contentTypeElement);
         selectPropsElement.appendChild(resourceTypeElement);
         selectPropsElement.appendChild(contentLengthElement);
         selectPropsElement.appendChild(lastModifiedElement);
-        selectPropsElement.appendChild(creationDate);
+//        selectPropsElement.appendChild(creationDate);
         selectPropsElement.appendChild(etagElement);
-        selectPropsElement.appendChild(quotaUsedElement);
-        selectPropsElement.appendChild(quotaAvailableElement);
+//        selectPropsElement.appendChild(quotaUsedElement);
+//        selectPropsElement.appendChild(quotaAvailableElement);
         selectPropsElement.appendChild(permissionsElement);
         selectPropsElement.appendChild(remoteIdElement);
         selectPropsElement.appendChild(sizeElement);
@@ -207,10 +218,6 @@ public class SearchOperation extends RemoteOperation {
         Text hrefTextElement = query.createTextNode("/files/" + getClient().getCredentials().getUsername());
         Text depthTextElement = query.createTextNode("infinity");
         Element whereElement = query.createElementNS(DAV_NAMESPACE, "d:where");
-        Element folderElement = null;
-        if (filterOutFiles) {
-            folderElement = query.createElementNS(DAV_NAMESPACE, "d:is-collection");
-        }   
         Element equalsElement;
         if (searchType == SearchType.FAVORITE_SEARCH) {
             equalsElement = query.createElementNS(DAV_NAMESPACE, "d:eq");
@@ -222,7 +229,7 @@ public class SearchOperation extends RemoteOperation {
         }
         Element propElement = query.createElementNS(DAV_NAMESPACE, "d:prop");
         Element queryElement = null;
-        if (searchType == SearchType.CONTENT_TYPE_SEARCH) {
+        if (searchType == SearchType.CONTENT_TYPE_SEARCH || searchType == SearchType.PHOTO_SEARCH) {
             queryElement = query.createElementNS(DAV_NAMESPACE, "d:getcontenttype");
         } else if (searchType == SearchType.FILE_SEARCH) {
             queryElement = query.createElementNS(DAV_NAMESPACE, "d:displayname");
@@ -256,9 +263,7 @@ public class SearchOperation extends RemoteOperation {
 
         Element orderByElement = query.createElementNS(DAV_NAMESPACE, "d:orderby");
 
-        // Disabling order for now, but will leave the code in place for the future
-
-        /*if (searchType == SearchType.RECENTLY_MODIFIED_SEARCH || searchType == SearchType.FAVORITE_SEARCH) {
+        if (searchType == SearchType.PHOTO_SEARCH) {
             Element orderElement = query.createElementNS(DAV_NAMESPACE, "d:order");
             orderByElement.appendChild(orderElement);
             Element orderPropElement = query.createElementNS(DAV_NAMESPACE, "d:prop");
@@ -267,7 +272,7 @@ public class SearchOperation extends RemoteOperation {
             orderPropElement.appendChild(orderPropElementValue);
             Element orderAscDescElement = query.createElementNS(DAV_NAMESPACE, "d:descending");
             orderElement.appendChild(orderAscDescElement);
-        }*/
+        }
 
         // Build XML tree
         searchRequestElement.setAttribute("xmlns:oc", "http://nextcloud.com/ns");
@@ -282,11 +287,27 @@ public class SearchOperation extends RemoteOperation {
         scopeElement.appendChild(depthElement);
         hrefElement.appendChild(hrefTextElement);
         depthElement.appendChild(depthTextElement);
-        if (folderElement != null) {
+        if (filterOutFiles) {
             Element andElement = query.createElementNS(DAV_NAMESPACE, "d:and");
+            Element folderElement = query.createElementNS(DAV_NAMESPACE, "d:is-collection");
             andElement.appendChild(folderElement);
             andElement.appendChild(equalsElement);
             whereElement.appendChild(andElement);
+        } else if (timestamp != -1) {
+            Element and = query.createElementNS(DAV_NAMESPACE, "d:and");
+            Element lessThan = query.createElementNS(DAV_NAMESPACE, "d:lt");
+            Element lastModified = query.createElementNS(DAV_NAMESPACE, "d:getlastmodified");
+            Element literal = query.createElementNS(DAV_NAMESPACE, "d:literal");
+            Element prop = query.createElementNS(DAV_NAMESPACE, "d:prop");
+            prop.appendChild(lastModified);
+            literal.setTextContent(String.valueOf(timestamp));
+            
+            lessThan.appendChild(prop);
+            lessThan.appendChild(literal);
+            
+            and.appendChild(lessThan);
+            and.appendChild(equalsElement);
+            whereElement.appendChild(and);
         } else {
             whereElement.appendChild(equalsElement);
         }
@@ -295,6 +316,14 @@ public class SearchOperation extends RemoteOperation {
         propElement.appendChild(queryElement);
         literalElement.appendChild(literalTextElement);
         basicSearchElement.appendChild(orderByElement);
+
+        if (limit > 0) {
+            Element limitElement = query.createElementNS(DAV_NAMESPACE, "d:limit");
+            Element nResultElement = query.createElementNS(DAV_NAMESPACE, "d:nresults");
+            nResultElement.appendChild(query.createTextNode(String.valueOf(limit)));
+            limitElement.appendChild(nResultElement);
+            basicSearchElement.appendChild(limitElement);
+        }
 
         return query;
     }
