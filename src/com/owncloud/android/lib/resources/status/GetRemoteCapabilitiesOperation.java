@@ -132,6 +132,10 @@ public class GetRemoteCapabilitiesOperation extends RemoteOperation {
 
     // v1 client side encryption
     private static final String NODE_END_TO_END_ENCRYPTION = "end-to-end-encryption";
+    
+    // Richdocuments
+    private static final String NODE_RICHDOCUMENTS = "richdocuments";
+    private static final String NODE_MIMETYPES = "mimetypes";
 
     /**
      * Constructor
@@ -386,6 +390,23 @@ public class GetRemoteCapabilitiesOperation extends RemoteOperation {
                                 capability.setEndToEndEncryption(CapabilityBooleanType.FALSE);
                             }
                             Log_OC.d(TAG, "*** Added " + NODE_END_TO_END_ENCRYPTION);
+                        }
+                        
+                        if (respCapabilities.has(NODE_RICHDOCUMENTS)) {
+                            capability.setRichDocuments(CapabilityBooleanType.TRUE);
+
+                            JSONArray mimeTypesArray = respCapabilities.getJSONObject(NODE_RICHDOCUMENTS)
+                                    .getJSONArray(NODE_MIMETYPES);
+                            
+                            ArrayList<String> mimeTypes = new ArrayList<>();
+
+                            for (int i=0; i < mimeTypesArray.length(); i++) {
+                                mimeTypes.add(mimeTypesArray.getString(i));
+                            }
+                            
+                            capability.setRichDocumentsMimeTypeList(mimeTypes);
+                        } else {
+                            capability.setRichDocuments(CapabilityBooleanType.FALSE);
                         }
                     }
                     
