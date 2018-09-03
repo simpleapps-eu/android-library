@@ -32,6 +32,7 @@
         android:minSdkVersion="14"
         android:targetSdkVersion="26"/>
 
+   <!--
     <uses-permission
         android:maxSdkVersion="22"
         android:name="android.permission.AUTHENTICATE_ACCOUNTS" />
@@ -44,6 +45,8 @@
     <uses-permission
         android:maxSdkVersion="22"
         android:name="android.permission.USE_CREDENTIALS" />
+    -->
+
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
 </manifest>
