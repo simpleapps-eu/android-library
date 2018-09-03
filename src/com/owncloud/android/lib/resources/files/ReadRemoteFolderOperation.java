@@ -138,6 +138,10 @@ public class ReadRemoteFolderOperation extends RemoteOperation {
      */
     private void readData(MultiStatus remoteData, OwnCloudClient client) {
         mFolderAndFiles = new ArrayList<Object>();
+        
+        // Catch situation where size == 0 to avoid ArrayIndexOutOfBounds
+        if (remoteData.getResponses().size() == 0)
+            return;
 
         // parse data from remote folder 
         WebdavEntry we = new WebdavEntry(remoteData.getResponses()[0],
